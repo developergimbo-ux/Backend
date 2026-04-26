@@ -1,0 +1,81 @@
+food_id,name,category,diet_type,meal_type,quantity,quantity_unit,calories,protein_g,carbs_g,fat_g,fiber_g,tags,goal_tags,common_allergies
+1,Roti (Whole Wheat),carb,veg,lunch;dinner,2,pieces,180,6,36,2,4,wheat;gluten,fat_loss;maintenance;muscle_gain,gluten
+2,Basmati Rice (cooked),carb,veg,lunch;dinner,1,cup,205,4,45,0,1,rice,fat_loss;maintenance;muscle_gain,
+3,Brown Rice (cooked),carb,veg,lunch;dinner,1,cup,216,5,45,2,4,rice;healthy,fat_loss;maintenance;muscle_gain,
+4,Poha (flattened rice),carb,veg,breakfast,1,cup cooked,250,4,52,3,2,rice;light,fat_loss;maintenance,
+5,Upma (semolina),carb,veg,breakfast,1,cup,200,5,38,4,3,wheat;gluten,maintenance;muscle_gain,gluten
+6,Dalia (broken wheat porridge),carb,veg,breakfast,1,cup cooked,150,5,33,1,5,wheat;high-fiber,fat_loss;maintenance,gluten
+7,Idli,carb,veg,breakfast,3,pieces,150,5,30,1,2,rice;fermented,fat_loss;maintenance,
+8,Dosa (plain),carb,veg,breakfast,1,large,168,4,32,4,2,rice;fermented,maintenance,
+9,Paratha (plain),carb,veg,breakfast,1,piece,200,4,28,8,3,wheat;gluten,maintenance;muscle_gain,gluten
+10,Bread (whole wheat),carb,veg,breakfast,2,slices,138,7,26,2,4,wheat;gluten,fat_loss;maintenance,gluten
+11,Banana,fruit,veg,breakfast;snack,1,medium,89,1,23,0,3,fruit,fat_loss;maintenance;muscle_gain,
+12,Apple,fruit,veg,breakfast;snack,1,medium,95,0,25,0,4,fruit,fat_loss;maintenance,
+13,Papaya,fruit,veg,breakfast;snack,1,cup,55,1,14,0,3,fruit;low-cal,fat_loss,
+14,Guava,fruit,veg,breakfast;snack,1,medium,68,3,14,1,5,fruit;high-fiber,fat_loss,
+15,Mango (seasonal),fruit,veg,snack,1,cup chunks,99,1,25,1,3,fruit;seasonal,maintenance;muscle_gain,
+16,Moong Dal (yellow lentil),protein,veg,lunch;dinner,1,cup cooked,212,14,38,1,8,lentil;legume,fat_loss;maintenance;muscle_gain,
+17,Masoor Dal (red lentil),protein,veg,lunch;dinner,1,cup cooked,230,18,40,1,8,lentil;legume,fat_loss;maintenance;muscle_gain,
+18,Chana Dal (split chickpea),protein,veg,lunch;dinner,1,cup cooked,220,12,38,4,10,legume;high-fiber,fat_loss;maintenance,
+19,Rajma (kidney beans),protein,veg,lunch;dinner,1,cup cooked,224,15,40,1,12,legume;high-fiber,fat_loss;maintenance;muscle_gain,
+20,Chole (chickpeas),protein,veg,lunch;dinner,1,cup cooked,268,15,45,4,13,legume;high-fiber,maintenance;muscle_gain,
+21,Paneer (low fat),protein,veg,lunch;dinner,100,grams,265,18,4,20,0,dairy;protein,maintenance;muscle_gain,dairy
+22,Paneer Bhurji (scrambled),protein,veg,breakfast;lunch,1,cup,280,20,8,20,2,dairy;protein,maintenance;muscle_gain,dairy
+23,Tofu (firm),protein,veg,lunch;dinner,150,grams,120,13,3,6,2,soy,fat_loss;maintenance;muscle_gain,soy
+24,Eggs (boiled),protein,nonveg,breakfast;snack,2,whole,156,12,1,11,0,egg,fat_loss;maintenance;muscle_gain,egg
+25,Egg Whites,protein,nonveg,breakfast,4,whites,68,14,1,0,0,egg;low-cal,fat_loss;muscle_gain,egg
+26,Egg Bhurji (scrambled eggs),protein,nonveg,breakfast,2,eggs with veg,180,14,4,12,1,egg,maintenance;muscle_gain,egg
+27,Chicken Breast (grilled),protein,nonveg,lunch;dinner,150,grams,165,31,0,4,0,poultry;lean,fat_loss;maintenance;muscle_gain,
+28,Chicken Curry (home style),protein,nonveg,lunch;dinner,1,cup,280,28,8,16,2,poultry,maintenance;muscle_gain,
+29,Tandoori Chicken,protein,nonveg,lunch;dinner,2,pieces,220,35,5,8,1,poultry;lean,fat_loss;maintenance;muscle_gain,dairy
+30,Egg Curry,protein,nonveg,lunch;dinner,2,eggs in gravy,220,14,8,15,2,egg,maintenance,egg
+31,Fish Curry (rohu/catla),protein,nonveg,lunch;dinner,150,grams with gravy,220,28,5,10,0,fish,fat_loss;maintenance;muscle_gain,fish
+32,Tuna (canned drained),protein,nonveg,lunch;snack,90,grams,100,22,0,1,0,fish;lean,fat_loss;muscle_gain,fish
+33,Mutton Curry,protein,nonveg,lunch;dinner,1,cup,310,26,8,20,1,red-meat,muscle_gain,
+34,Greek Yogurt (thick dahi),protein,veg,breakfast;snack,200,grams,130,17,8,0,0,dairy;probiotic,fat_loss;maintenance;muscle_gain,dairy
+35,Curd/Dahi (plain),dairy,veg,lunch;snack,1,cup,100,6,8,4,0,dairy;probiotic,fat_loss;maintenance,dairy
+36,Buttermilk (chaas),dairy,veg,lunch;snack,1,glass 250ml,40,3,5,1,0,dairy;probiotic;low-cal,fat_loss,dairy
+37,Milk (low fat),dairy,veg,breakfast;snack,1,glass 250ml,102,8,12,2,0,dairy,maintenance;muscle_gain,dairy
+38,Paneer Tikka,protein,veg,snack;dinner,6,pieces,280,18,8,20,1,dairy,maintenance;muscle_gain,dairy
+39,Sprouts (mixed moong),protein,veg,breakfast;snack,1,cup,62,5,12,0,4,legume;raw;superfood,fat_loss;maintenance,
+40,Peanuts (roasted),fat,veg,snack,30,grams,170,8,5,14,2,nuts;groundnut,maintenance;muscle_gain,nuts
+41,Peanut Butter,fat,veg,breakfast;snack,1,tablespoon,94,4,3,8,1,nuts,maintenance;muscle_gain,nuts
+42,Almonds,fat,veg,snack,25,grams handful,144,5,5,12,3,nuts,maintenance;muscle_gain,nuts
+43,Walnuts,fat,veg,snack,30,grams,196,5,4,20,2,nuts,maintenance;muscle_gain,nuts
+44,Coconut (fresh grated),fat,veg,lunch;dinner,2,tablespoon,80,1,3,8,2,coconut,maintenance,
+45,Ghee,fat,veg,lunch;dinner,1,teaspoon,45,0,0,5,0,dairy;fat,maintenance;muscle_gain,dairy
+46,Mustard Oil,fat,veg,cooking,1,teaspoon,40,0,0,5,0,cooking-fat,all,
+47,Broccoli (steamed),vegetable,veg,lunch;dinner,1,cup,55,4,11,1,5,green-veg;fiber,fat_loss;maintenance;muscle_gain,
+48,Spinach Palak (cooked),vegetable,veg,lunch;dinner,1,cup,41,5,7,0,4,leafy;iron,fat_loss;maintenance;muscle_gain,
+49,Methi Fenugreek Leaves,vegetable,veg,lunch;dinner,1,cup cooked,35,3,6,0,3,leafy;bitter,fat_loss,
+50,Cauliflower Gobi (roasted),vegetable,veg,lunch;dinner,1,cup,40,3,8,0,3,vegetable,fat_loss;maintenance,
+51,Cabbage (cooked),vegetable,veg,lunch;dinner,1,cup,35,2,8,0,3,vegetable;low-cal,fat_loss,
+52,Lauki Bottle Gourd (cooked),vegetable,veg,lunch;dinner,1,cup,30,1,7,0,2,vegetable;low-cal;hydrating,fat_loss,
+53,Bhindi Okra (stir-fried),vegetable,veg,lunch;dinner,1,cup,80,3,14,3,4,vegetable,fat_loss;maintenance,
+54,Baingan Eggplant (roasted),vegetable,veg,lunch;dinner,1,cup,35,1,9,0,3,vegetable;low-cal,fat_loss,
+55,Peas Matar (cooked),vegetable,veg,lunch;dinner,1,cup,134,9,25,0,9,legume;protein,fat_loss;maintenance,
+56,Carrot (raw or cooked),vegetable,veg,lunch;dinner;snack,1,medium,25,1,6,0,2,vegetable;beta-carotene,fat_loss,
+57,Tomato (raw),vegetable,veg,lunch;dinner,1,medium,22,1,5,0,1,vegetable,fat_loss,
+58,Cucumber Kheera,vegetable,veg,snack;lunch,1,cup sliced,16,1,4,0,1,vegetable;hydrating;low-cal,fat_loss,
+59,Onion (raw),vegetable,veg,lunch;dinner,1,medium,44,1,10,0,2,vegetable,all,
+60,Sweet Potato Shakarkandi,carb,veg,lunch;dinner;snack,1,medium,112,2,26,0,4,starchy;beta-carotene,fat_loss;maintenance,
+61,Sambar,protein,veg,breakfast;lunch,1,cup,100,5,15,2,5,lentil;vegetable,fat_loss;maintenance,
+62,Rasam,soup,veg,lunch;dinner,1,cup,50,2,8,1,2,tomato;light,fat_loss,
+63,Dal Tadka,protein,veg,lunch;dinner,1,cup,230,14,36,6,8,lentil,fat_loss;maintenance;muscle_gain,
+64,Palak Paneer,protein,veg,lunch;dinner,1,cup,280,14,12,20,5,dairy;leafy,maintenance;muscle_gain,dairy
+65,Dal Makhani,protein,veg,lunch;dinner,1,cup,310,14,38,12,10,lentil;dairy,maintenance;muscle_gain,dairy
+66,Vegetable Khichdi,carb,veg,lunch;dinner,1,cup,220,7,40,4,5,rice;lentil,fat_loss;maintenance,
+67,Oats (rolled cooked),carb,veg,breakfast,1,cup cooked,150,5,27,3,4,oats;high-fiber,fat_loss;maintenance;muscle_gain,gluten
+68,Muesli (no sugar),carb,veg,breakfast,50,grams dry,185,6,30,5,4,oats;nuts,maintenance,gluten;nuts
+69,Whey Protein Shake,protein,veg,breakfast;snack,1,scoop in water,120,25,3,2,0,supplement;protein,muscle_gain,dairy
+70,Sattu Drink (roasted gram),protein,veg,breakfast;snack,2,tablespoon in water,140,10,22,2,6,legume;traditional,fat_loss;maintenance;muscle_gain,
+71,Roasted Chana (bhuna chana),protein,veg,snack,1,cup,364,19,58,5,16,legume;high-fiber,fat_loss;maintenance;muscle_gain,
+72,Makhana (fox nuts roasted),carb,veg,snack,1,cup,180,5,45,0,0,low-fat;light,fat_loss;maintenance,
+73,Mixed Veg Salad,vegetable,veg,lunch;dinner;snack,2,cups,40,2,8,0,3,raw;fiber,fat_loss,
+74,Raita (curd + cucumber),dairy,veg,lunch;dinner,1,cup,80,5,8,3,1,dairy;cooling,fat_loss;maintenance,dairy
+75,Fruit Chaat,fruit,veg,snack,1,cup,90,1,22,0,4,fruit;seasonal,fat_loss;maintenance,
+76,Lassi (plain low fat),dairy,veg,snack,1,glass 250ml,120,7,16,3,0,dairy;probiotic,maintenance,dairy
+77,Coconut Water,drink,veg,snack,1,glass 250ml,46,2,9,0,0,hydrating;electrolytes,fat_loss;maintenance,
+78,Green Tea,drink,veg,snack,1,cup,2,0,0,0,0,antioxidant;low-cal,fat_loss,
+79,Lemon Water,drink,veg,snack,1,glass,10,0,3,0,0,detox;low-cal,fat_loss,
+80,Mixed Dal (panchratna),protein,veg,lunch;dinner,1,cup cooked,240,16,40,2,10,lentil;high-fiber,fat_loss;maintenance;muscle_gain,
