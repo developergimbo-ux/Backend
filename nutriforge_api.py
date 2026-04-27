@@ -8,22 +8,25 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nutriforge")
 
-# ── Load CSV ──────────────────────────────────────────────────────────────────
 CSV_PATH = Path(__file__).parent / "indian_diet_data.csv"
 if not CSV_PATH.exists():
     CSV_PATH = Path("indian_diet_data.csv")
 
 df = None
 CSV_LOAD_ERROR = None
+_food_cache: dict = {}
 
 try:
     if not CSV_PATH.exists():
@@ -33,6 +36,7 @@ try:
         df[col] = df[col].fillna("").apply(
             lambda x: [i.strip() for i in str(x).split(";") if i.strip()]
         )
+    df["_eff"] = df["protein_g"] / df["calories"].clip(lower=1)
     logger.info(f"[NutriForge] Loaded {len(df)} Indian food items.")
 except Exception as e:
     CSV_LOAD_ERROR = str(e)
@@ -46,7 +50,97 @@ def require_data():
             detail=f"Dataset unavailable: {CSV_LOAD_ERROR}. Ensure 'indian_diet_data.csv' is deployed alongside the app."
         )
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
+
+TRAINING_DATA = [
+    (22, 55, 162, "female", "fat_loss",    1350),
+    (25, 70, 175, "male",   "muscle_gain", 2800),
+    (30, 80, 180, "male",   "maintenance", 2400),
+    (28, 60, 165, "female", "maintenance", 1800),
+    (35, 90, 178, "male",   "fat_loss",    2000),
+    (45, 75, 170, "male",   "fat_loss",    1900),
+    (22, 50, 158, "female", "muscle_gain", 2100),
+    (40, 85, 182, "male",   "muscle_gain", 3100),
+    (32, 65, 168, "female", "fat_loss",    1500),
+    (27, 73, 177, "male",   "maintenance", 2350),
+    (50, 95, 175, "male",   "fat_loss",    2100),
+    (24, 48, 155, "female", "fat_loss",    1200),
+    (38, 68, 163, "female", "maintenance", 1900),
+    (29, 82, 183, "male",   "muscle_gain", 3200),
+    (33, 77, 176, "male",   "fat_loss",    2050),
+    (21, 57, 160, "female", "maintenance", 1700),
+    (44, 100,181, "male",   "fat_loss",    2300),
+    (26, 63, 172, "male",   "maintenance", 2200),
+    (31, 54, 157, "female", "muscle_gain", 2000),
+    (48, 72, 169, "male",   "maintenance", 2100),
+    (23, 46, 153, "female", "fat_loss",    1150),
+    (36, 88, 179, "male",   "muscle_gain", 3050),
+    (42, 78, 174, "male",   "maintenance", 2250),
+    (27, 61, 164, "female", "muscle_gain", 2150),
+    (55, 82, 171, "male",   "fat_loss",    1950),
+    (19, 65, 178, "male",   "muscle_gain", 2900),
+    (34, 58, 161, "female", "maintenance", 1750),
+    (29, 95, 184, "male",   "muscle_gain", 3300),
+    (41, 67, 166, "female", "fat_loss",    1450),
+    (25, 78, 181, "male",   "fat_loss",    2100),
+    (38, 55, 159, "female", "muscle_gain", 2050),
+    (52, 88, 176, "male",   "maintenance", 2200),
+    (30, 62, 167, "female", "fat_loss",    1400),
+    (20, 72, 176, "male",   "maintenance", 2400),
+    (45, 58, 162, "female", "maintenance", 1650),
+    (28, 84, 180, "male",   "fat_loss",    2200),
+    (37, 52, 156, "female", "fat_loss",    1250),
+    (24, 91, 185, "male",   "muscle_gain", 3400),
+    (43, 74, 173, "male",   "fat_loss",    2000),
+    (31, 60, 163, "female", "muscle_gain", 2100),
+]
+
+_gender_enc = LabelEncoder()
+_goal_enc   = LabelEncoder()
+_scaler     = StandardScaler()
+_model      = LinearRegression()
+
+
+def _train_model():
+    data = pd.DataFrame(TRAINING_DATA,
+                        columns=["age", "weight", "height", "gender", "goal", "calories"])
+    data["gender_enc"] = _gender_enc.fit_transform(data["gender"])
+    data["goal_enc"]   = _goal_enc.fit_transform(data["goal"])
+    features = data[["age", "weight", "height", "gender_enc", "goal_enc"]].values
+    targets  = data["calories"].values
+    scaled   = _scaler.fit_transform(features)
+    _model.fit(scaled, targets)
+    logger.info("[NutriForge] ML calorie prediction model trained successfully.")
+
+
+_train_model()
+
+
+def predict_calories(age: int, weight: float, height: float,
+                     gender: str, goal: str) -> int:
+    try:
+        g_enc  = _gender_enc.transform([gender.lower()])[0]
+        gl_enc = _goal_enc.transform([goal.lower()])[0]
+    except ValueError:
+        g_enc  = 0
+        gl_enc = 0
+    features = np.array([[age, weight, height, g_enc, gl_enc]], dtype=float)
+    scaled   = _scaler.transform(features)
+    return max(1000, int(round(_model.predict(scaled)[0])))
+
+
+def bmi_calorie_adjustment(bmi: float, goal: str) -> float:
+    if goal == "fat_loss":
+        if bmi >= 30:   return 0.92
+        if bmi >= 27:   return 0.96
+        if bmi < 18.5:  return 1.05
+    elif goal == "muscle_gain":
+        if bmi < 18.5:  return 1.12
+        if bmi >= 30:   return 1.03
+    elif goal == "maintenance":
+        if bmi < 18.5:  return 1.08
+        if bmi >= 30:   return 0.95
+    return 1.0
+
 
 class UserProfile(BaseModel):
     age: int = Field(..., ge=10, le=100)
@@ -72,20 +166,38 @@ class FoodQuery(BaseModel):
     allergies: Optional[list[str]] = []
     limit: Optional[int] = 10
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 
 ACTIVITY_MULT = {"sedentary": 1.2, "light": 1.375, "moderate": 1.55, "very_active": 1.725, "athlete": 1.9}
 GOAL_FACTOR   = {"fat_loss": 0.80, "maintenance": 1.00, "muscle_gain": 1.10}
 PROTEIN_TGT   = {"fat_loss": (1.8, 2.2), "muscle_gain": (2.2, 2.8), "maintenance": (1.6, 2.0)}
+MACRO_RATIOS  = {
+    "fat_loss":    {"protein": 0.35, "carbs": 0.40, "fat": 0.25},
+    "muscle_gain": {"protein": 0.30, "carbs": 0.50, "fat": 0.20},
+    "maintenance": {"protein": 0.25, "carbs": 0.50, "fat": 0.25},
+}
 CAL_SPLITS = {
     3: {"breakfast": 0.30, "lunch": 0.40, "dinner": 0.30},
     4: {"breakfast": 0.25, "mid_morning_snack": 0.10, "lunch": 0.40, "dinner": 0.25},
     5: {"breakfast": 0.25, "mid_morning_snack": 0.10, "lunch": 0.35, "afternoon_snack": 0.10, "dinner": 0.20},
 }
-SLOT_TYPE = {"breakfast": "breakfast", "mid_morning_snack": "snack",
-             "lunch": "lunch", "afternoon_snack": "snack", "dinner": "dinner"}
+SLOT_TYPE = {
+    "breakfast": "breakfast", "mid_morning_snack": "snack",
+    "lunch": "lunch", "afternoon_snack": "snack", "dinner": "dinner",
+}
+SLOT_REQUIRED_CATS = {
+    "breakfast":         [("carb", True),  ("protein", True),     ("dairy", False), ("fruit", False)],
+    "mid_morning_snack": [("fruit", False), ("dairy", False),      ("protein", False)],
+    "lunch":             [("protein", True),("carb", True),        ("vegetable", True), ("fat", False)],
+    "afternoon_snack":   [("protein", False),("fruit", False),     ("dairy", False)],
+    "dinner":            [("protein", True),("vegetable", True),   ("carb", False), ("fat", False)],
+}
+INDIAN_COMBOS = {
+    "lunch":     [("protein", "carb"), ("carb", "vegetable")],
+    "dinner":    [("protein", "vegetable"), ("carb", "protein")],
+    "breakfast": [("carb", "protein"), ("carb", "dairy")],
+}
+DINNER_CAL_FACTOR = {"fat_loss": 0.85, "muscle_gain": 1.0, "maintenance": 0.93}
 
-# ── Calculations ──────────────────────────────────────────────────────────────
 
 def calc_bmi(w, h): return round(w / (h / 100) ** 2, 1)
 
@@ -96,7 +208,7 @@ def bmi_cat(b):
     return "Obese"
 
 def calc_bmr(w, h, age, gender):
-    base = 10*w + 6.25*h - 5*age
+    base = 10 * w + 6.25 * h - 5 * age
     return round(base + 5 if gender.lower() == "male" else base - 161, 1)
 
 def calc_tdee(bmr, activity):
@@ -109,81 +221,185 @@ def protein_range(w, goal):
     lo, hi = PROTEIN_TGT.get(goal, (1.6, 2.0))
     return {"min_g": round(lo * w), "max_g": round(hi * w)}
 
-# ── Food Selection ────────────────────────────────────────────────────────────
 
-def filter_foods(slot_type, goal, diet_type, allergies):
+def _base_filter(slot_type: str, diet_type: str, allergies: list) -> pd.DataFrame:
+    key = f"{slot_type}|{diet_type}|{','.join(sorted(allergies))}"
+    if key in _food_cache:
+        return _food_cache[key]
     mask = df["meal_type"].apply(lambda mt: slot_type in mt)
     if diet_type == "veg":
         mask &= df["diet_type"] == "veg"
-    if goal:
-        mask &= df["goal_tags"].apply(lambda gt: goal in gt or "all" in gt)
     if allergies:
         la = [a.lower() for a in allergies]
         mask &= df["common_allergies"].apply(lambda al: not any(a in al for a in la))
-    return df[mask].copy()
+    result = df[mask].copy()
+    _food_cache[key] = result
+    return result
 
 
-def pick_foods(slot_name, target_cal, goal, diet_type, allergies):
+def filter_foods(slot_type: str, goal: str, diet_type: str, allergies: list) -> pd.DataFrame:
+    base = _base_filter(slot_type, diet_type, allergies)
+    if goal and not base.empty:
+        gm = base["goal_tags"].apply(lambda gt: goal in gt or "all" in gt)
+        filtered = base[gm]
+        if not filtered.empty:
+            return filtered
+    return base
+
+
+def _weighted_pick(grp: pd.DataFrame, goal: str, cat: str) -> pd.Series:
+    if grp.empty:
+        return grp
+    if goal == "muscle_gain" and cat == "protein":
+        raw = grp["protein_g"]
+    elif goal == "fat_loss" and cat in ("protein", "vegetable"):
+        raw = grp["_eff"]
+    elif goal == "fat_loss" and cat == "carb":
+        raw = 1.0 / grp["calories"].clip(lower=1)
+    else:
+        raw = grp.get("health_score", pd.Series(1.0, index=grp.index))
+    raw = raw.fillna(0.5).clip(lower=0.01)
+    w   = raw / raw.sum()
+    return grp.sample(1, weights=w).iloc[0]
+
+
+def pick_foods(slot_name: str, target_cal: int, goal: str,
+               diet_type: str, allergies: list, protein_budget_g: float,
+               used_global: set) -> list:
     slot_type = SLOT_TYPE.get(slot_name, "lunch")
+    slot_reqs = SLOT_REQUIRED_CATS.get(slot_name, [("protein", True), ("carb", True)])
+
     cands = filter_foods(slot_type, goal, diet_type, allergies)
     if cands.empty:
-        cands = filter_foods(slot_type, None, diet_type, allergies)
+        cands = _base_filter(slot_type, diet_type, allergies)
+    if cands.empty:
+        cands = _base_filter(slot_type, "nonveg", [])
     if cands.empty:
         return []
 
-    cat_order = ["protein", "carb", "vegetable", "dairy", "fat", "fruit", "drink"]
-    selected, used = [], 0
-    for cat in cat_order:
-        grp = cands[cands["category"] == cat]
-        if grp.empty: continue
-        row = grp.sample(1).iloc[0]
-        if used + row["calories"] <= target_cal * 1.15:
-            selected.append(row)
-            used += row["calories"]
-        if used >= target_cal * 0.85: break
+    if slot_name == "dinner":
+        target_cal = round(target_cal * DINNER_CAL_FACTOR.get(goal, 0.93))
 
-    if used < target_cal * 0.70:
-        ids = [r["food_id"] for r in selected]
-        extras = cands[~cands["food_id"].isin(ids)]
+    selected, used_cal, used_prot = [], 0, 0.0
+    used_ids = set(used_global)
+    seen_cats: list[str] = []
+
+    for cat, required in slot_reqs:
+        if used_cal >= target_cal * 0.92:
+            break
+        grp = cands[(cands["category"] == cat) & (~cands["food_id"].isin(used_ids))]
+        if grp.empty:
+            grp = cands[cands["category"] == cat] if required else grp
+        if grp.empty:
+            continue
+        row = _weighted_pick(grp, goal, cat)
+        if used_cal + row["calories"] <= target_cal * 1.25:
+            selected.append(row)
+            used_cal  += row["calories"]
+            used_prot += row["protein_g"]
+            used_ids.add(row["food_id"])
+            seen_cats.append(cat)
+
+    for a, b in INDIAN_COMBOS.get(slot_name, []):
+        if a in seen_cats and b not in seen_cats:
+            grp = cands[(cands["category"] == b) & (~cands["food_id"].isin(used_ids))]
+            if not grp.empty:
+                row = _weighted_pick(grp, goal, b)
+                if used_cal + row["calories"] <= target_cal * 1.30:
+                    selected.append(row)
+                    used_cal  += row["calories"]
+                    used_prot += row["protein_g"]
+                    used_ids.add(row["food_id"])
+                    seen_cats.append(b)
+                    break
+
+    if used_prot < protein_budget_g * 0.55:
+        grp = cands[(cands["category"] == "protein") & (~cands["food_id"].isin(used_ids))]
+        if not grp.empty:
+            row = _weighted_pick(grp, goal, "protein")
+            if used_cal + row["calories"] <= target_cal * 1.35:
+                selected.append(row)
+                used_cal  += row["calories"]
+                used_ids.add(row["food_id"])
+
+    if used_cal < target_cal * 0.58:
+        extras = cands[~cands["food_id"].isin(used_ids)]
         if not extras.empty:
-            row = extras.sample(1).iloc[0]
+            row = _weighted_pick(extras, goal, "carb")
             selected.append(row)
+            used_ids.add(row["food_id"])
 
-    return [{"name": r["name"], "quantity": f"{r['quantity']} {r['quantity_unit']}",
-             "calories": int(r["calories"]), "protein_g": float(r["protein_g"]),
-             "carbs_g": float(r["carbs_g"]), "fat_g": float(r["fat_g"]),
-             "category": r["category"], "diet_type": r["diet_type"]} for r in selected]
+    used_global.update(r["food_id"] for r in selected)
 
-# ── Meal Plan ─────────────────────────────────────────────────────────────────
+    return [{
+        "name":      r["name"],
+        "quantity":  f"{r['quantity']} {r['quantity_unit']}",
+        "calories":  int(r["calories"]),
+        "protein_g": float(r["protein_g"]),
+        "carbs_g":   float(r["carbs_g"]),
+        "fat_g":     float(r["fat_g"]),
+        "category":  r["category"],
+        "diet_type": r["diet_type"],
+    } for r in selected]
+
 
 def generate_meal_plan(p: UserProfile):
     bmi  = calc_bmi(p.weight_kg, p.height_cm)
     bmr  = calc_bmr(p.weight_kg, p.height_cm, p.age, p.gender)
     tdee = calc_tdee(bmr, p.activity)
-    tgt  = calc_target(tdee, p.goal)
-    pro  = protein_range(p.weight_kg, p.goal)
+
+    ml_calories      = predict_calories(p.age, p.weight_kg, p.height_cm, p.gender, p.goal)
+    formula_calories = calc_target(tdee, p.goal)
+    bmi_adj          = bmi_calorie_adjustment(bmi, p.goal)
+    tgt              = round(((ml_calories + formula_calories) / 2) * bmi_adj)
+
+    pro           = protein_range(p.weight_kg, p.goal)
+    per_meal_prot = pro["min_g"] / p.meals_per_day
+    used_global   = set()
+
     meals, tc, tp, tcarb, tf = [], 0, 0, 0, 0
 
     for slot, frac in CAL_SPLITS[p.meals_per_day].items():
         mt    = round(tgt * frac)
-        foods = pick_foods(slot, mt, p.goal, p.diet_type, p.allergies)
+        foods = pick_foods(slot, mt, p.goal, p.diet_type, p.allergies, per_meal_prot, used_global)
         mc    = sum(f["calories"] for f in foods)
         mp    = round(sum(f["protein_g"] for f in foods), 1)
-        mcarb = round(sum(f["carbs_g"] for f in foods), 1)
-        mf    = round(sum(f["fat_g"] for f in foods), 1)
+        mcarb = round(sum(f["carbs_g"]   for f in foods), 1)
+        mf    = round(sum(f["fat_g"]     for f in foods), 1)
         tc += mc; tp += mp; tcarb += mcarb; tf += mf
-        meals.append({"meal_name": slot.replace("_", " ").title(),
-                       "target_calories": mt, "actual_calories": mc,
-                       "protein_g": mp, "carbs_g": mcarb, "fat_g": mf, "foods": foods})
+        meals.append({
+            "meal_name":       slot.replace("_", " ").title(),
+            "target_calories": mt,
+            "actual_calories": mc,
+            "protein_g":       mp,
+            "carbs_g":         mcarb,
+            "fat_g":           mf,
+            "foods":           foods,
+        })
 
-    return {"stats": {"bmi": bmi, "bmi_category": bmi_cat(bmi), "bmr_kcal": bmr,
-                      "tdee_kcal": tdee, "target_calories": tgt, "goal": p.goal,
-                      "protein_target": pro},
-            "meals": meals,
-            "daily_totals": {"calories": tc, "protein_g": round(tp, 1),
-                             "carbs_g": round(tcarb, 1), "fat_g": round(tf, 1)}}
+    return {
+        "stats": {
+            "bmi":                   bmi,
+            "bmi_category":          bmi_cat(bmi),
+            "bmr_kcal":              bmr,
+            "tdee_kcal":             tdee,
+            "ml_predicted_calories": ml_calories,
+            "formula_calories":      formula_calories,
+            "bmi_adjustment_factor": round(bmi_adj, 3),
+            "target_calories":       tgt,
+            "goal":                  p.goal,
+            "protein_target":        pro,
+            "macro_targets":         MACRO_RATIOS.get(p.goal, MACRO_RATIOS["maintenance"]),
+        },
+        "meals": meals,
+        "daily_totals": {
+            "calories":  tc,
+            "protein_g": round(tp,    1),
+            "carbs_g":   round(tcarb, 1),
+            "fat_g":     round(tf,    1),
+        },
+    }
 
-# ── NLP Chat Engine ───────────────────────────────────────────────────────────
 
 INTENTS = {
     "bmi":       r"\bbmi\b",
@@ -258,7 +474,9 @@ def fmt_plan(plan):
         "📊 Your Stats",
         f"  BMI: {s['bmi']} ({s['bmi_category']})",
         f"  BMR: {s['bmr_kcal']} kcal | TDEE: {s['tdee_kcal']} kcal",
-        f"  Target: {s['target_calories']} kcal/day ({s['goal'].replace('_',' ').title()})",
+        f"  ML Predicted: {s['ml_predicted_calories']} kcal | Formula: {s['formula_calories']} kcal",
+        f"  BMI Adjustment: ×{s['bmi_adjustment_factor']}",
+        f"  Target (smart): {s['target_calories']} kcal/day ({s['goal'].replace('_',' ').title()})",
         f"  Protein: {s['protein_target']['min_g']}–{s['protein_target']['max_g']} g/day",
         "", "🍽️ Your Indian Meal Plan", "─" * 38,
     ]
@@ -297,27 +515,35 @@ def chat_logic(message, profile=None):
             "I can help you with:\n"
             "  • 🥗 Personalised Indian meal plans (Roti, Dal, Paneer, Chicken…)\n"
             "  • 📊 BMI, BMR, TDEE calculations\n"
+            "  • 🤖 ML-predicted + BMI-adjusted calorie targets\n"
             "  • 🎯 Goals: Fat Loss | Muscle Gain | Maintenance\n"
             "  • 🌿 Veg & Non-Veg plans with allergy filtering\n"
-            "  • 💪 Protein targets by goal\n\nJust share your details and I'll get started!"
+            "  • 💪 Protein & macro targets by goal\n\nJust share your details and I'll get started!"
         )}
 
     if intent in ("bmi", "bmr", "tdee", "calories", "protein") and weight and height:
-        bmr  = calc_bmr(weight, height, age or 25, gender)
-        tdee = calc_tdee(bmr, activity)
-        bmi  = calc_bmi(weight, height)
-        tgt  = calc_target(tdee, goal or "maintenance")
-        pro  = protein_range(weight, goal or "maintenance")
+        bmr     = calc_bmr(weight, height, age or 25, gender)
+        tdee    = calc_tdee(bmr, activity)
+        bmi     = calc_bmi(weight, height)
+        ml_cal  = predict_calories(age or 25, weight, height, gender, goal or "maintenance")
+        formula = calc_target(tdee, goal or "maintenance")
+        bmi_adj = bmi_calorie_adjustment(bmi, goal or "maintenance")
+        tgt     = round(((ml_cal + formula) / 2) * bmi_adj)
+        pro     = protein_range(weight, goal or "maintenance")
         return {"intent": intent, "reply": (
             f"Here are your numbers:\n\n"
             f"  📐 BMI: {bmi} ({bmi_cat(bmi)})\n"
             f"  🔥 BMR: {bmr} kcal/day\n"
             f"  ⚡ TDEE: {tdee} kcal/day\n"
+            f"  🤖 ML Predicted: {ml_cal} kcal/day\n"
+            f"  📊 BMI Adjustment: ×{round(bmi_adj, 3)}\n"
             f"  🎯 Target ({(goal or 'maintenance').replace('_',' ')}): {tgt} kcal/day\n"
             f"  💪 Protein: {pro['min_g']}–{pro['max_g']} g/day\n\n"
             "Want me to build a full Indian meal plan?"
         ), "data": {"bmi": bmi, "bmi_category": bmi_cat(bmi), "bmr": bmr,
-                    "tdee": tdee, "target_calories": tgt, "protein_target_g": pro}}
+                    "tdee": tdee, "ml_predicted_calories": ml_cal,
+                    "bmi_adjustment_factor": round(bmi_adj, 3),
+                    "target_calories": tgt, "protein_target_g": pro}}
 
     if (intent == "meal_plan" or intent == "general") and weight and height:
         p = UserProfile(age=age or 25, height_cm=height, weight_kg=weight, gender=gender,
@@ -338,7 +564,7 @@ def chat_logic(message, profile=None):
         )}
 
     if intent == "food_list":
-        slot = next((s for s in ["breakfast", "lunch", "dinner", "snack"] if s in message.lower()), "lunch")
+        slot  = next((s for s in ["breakfast", "lunch", "dinner", "snack"] if s in message.lower()), "lunch")
         foods = filter_foods(slot, goal or "maintenance", diet_type or "nonveg", allergies).head(10)
         if foods.empty:
             return {"intent": intent, "reply": "No matching foods found. Try adjusting filters."}
@@ -354,14 +580,13 @@ def chat_logic(message, profile=None):
         "Or ask me to calculate your BMI, BMR, or daily calories."
     )}
 
-# ── FastAPI App ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="NutriForge Indian Diet AI",
-    description="Self-contained Indian diet planner — no external LLM required.\n\n"
-                "**Features**: BMI/BMR/TDEE, Indian meal plans, veg/nonveg + allergy filtering, NL chat.\n\n"
-                "**Dataset**: 80 common Indian foods with accurate macros.",
-    version="1.0.0",
+    description="Smart AI-powered Indian diet planner with weighted food selection, BMI-aware calorie adjustment, variety control, and Indian meal intelligence.\n\n"
+                "**Features**: BMI/BMR/TDEE, ML + BMI-adjusted calories, balanced macro meals, no food repetition, Indian combos.\n\n"
+                "**Dataset**: 80+ common Indian foods with accurate macros.",
+    version="3.0.0",
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -369,15 +594,18 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 @app.get("/health", tags=["health"])
 def health():
     return {
-        "status": "running",
-        "dataset_loaded": df is not None,
-        "foods": len(df) if df is not None else 0,
+        "status":           "running",
+        "dataset_loaded":   df is not None,
+        "foods":            len(df) if df is not None else 0,
+        "ml_model":         "LinearRegression (trained)",
+        "training_samples": len(TRAINING_DATA),
+        "version":          "3.0.0",
     }
 
 
 @app.get("/", tags=["health"])
 def root():
-    return {"status": "ok", "service": "NutriForge Indian Diet AI", "version": "1.0.0",
+    return {"status": "ok", "service": "NutriForge Indian Diet AI", "version": "3.0.0",
             "endpoints": ["/chat", "/meal-plan", "/foods", "/calculate", "/health", "/docs"]}
 
 
@@ -403,7 +631,7 @@ def chat(req: ChatRequest):
 
 @app.post("/meal-plan", tags=["Meal Plan"], summary="Generate full Indian meal plan")
 def meal_plan(profile: UserProfile):
-    """Generate a complete day's Indian meal plan from your profile."""
+    """Generate a complete day's Indian meal plan with smart calorie adjustment and balanced macros."""
     try:
         require_data()
         return JSONResponse(content=generate_meal_plan(profile))
@@ -414,23 +642,26 @@ def meal_plan(profile: UserProfile):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/calculate", tags=["Calculations"], summary="BMI, BMR, TDEE calculator")
+@app.get("/calculate", tags=["Calculations"], summary="BMI, BMR, TDEE + smart calorie calculator")
 def calculate(weight_kg: float, height_cm: float, age: int,
               gender: str = "male", activity: str = "moderate", goal: str = "maintenance"):
-    """Returns BMI, BMR, TDEE, target calories, and protein target."""
+    """Returns BMI, BMR, TDEE, ML-predicted calories, BMI-adjusted target, and protein target."""
     try:
-        bmi  = calc_bmi(weight_kg, height_cm)
-        bmr  = calc_bmr(weight_kg, height_cm, age, gender)
-        tdee = calc_tdee(bmr, activity)
-        tgt  = calc_target(tdee, goal)
-        pro  = protein_range(weight_kg, goal)
+        bmi     = calc_bmi(weight_kg, height_cm)
+        bmr     = calc_bmr(weight_kg, height_cm, age, gender)
+        tdee    = calc_tdee(bmr, activity)
+        ml_cal  = predict_calories(age, weight_kg, height_cm, gender, goal)
+        formula = calc_target(tdee, goal)
+        bmi_adj = bmi_calorie_adjustment(bmi, goal)
+        tgt     = round(((ml_cal + formula) / 2) * bmi_adj)
+        pro     = protein_range(weight_kg, goal)
         return {"bmi": bmi, "bmi_category": bmi_cat(bmi), "bmr_kcal": bmr,
-                "tdee_kcal": tdee, "target_calories": tgt, "goal": goal,
-                "protein_target_g": pro,
-                "formulas": {"bmi": "weight(kg)/height(m)²",
-                             "bmr": "Mifflin-St Jeor",
+                "tdee_kcal": tdee, "ml_predicted_calories": ml_cal,
+                "formula_calories": formula, "bmi_adjustment_factor": round(bmi_adj, 3),
+                "target_calories": tgt, "goal": goal, "protein_target_g": pro,
+                "formulas": {"bmi": "weight(kg)/height(m)²", "bmr": "Mifflin-St Jeor",
                              "tdee": f"BMR × {ACTIVITY_MULT.get(activity, 1.55)} ({activity})",
-                             "target": f"TDEE × {GOAL_FACTOR.get(goal, 1.0)} ({goal})"}}
+                             "target": "blend(ML + formula) × BMI adjustment"}}
     except Exception as e:
         logger.error(f"/calculate error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -441,9 +672,10 @@ def get_foods(query: FoodQuery):
     """Filter foods by goal, diet type, meal type, and allergies."""
     try:
         require_data()
-        results = filter_foods(query.meal_type or "lunch", query.goal,
-                               query.diet_type or "nonveg", query.allergies or []).head(query.limit or 10)
-        drop_cols = [c for c in ["meal_type", "tags", "goal_tags", "common_allergies"] if c in results.columns]
+        results   = filter_foods(query.meal_type or "lunch", query.goal,
+                                 query.diet_type or "nonveg", query.allergies or []).head(query.limit or 10)
+        drop_cols = [c for c in ["meal_type", "tags", "goal_tags", "common_allergies", "_eff"]
+                     if c in results.columns]
         return {"count": len(results), "filters": query.dict(),
                 "foods": results.drop(columns=drop_cols).to_dict("records")}
     except HTTPException:
@@ -457,7 +689,8 @@ def get_foods(query: FoodQuery):
 def all_foods():
     try:
         require_data()
-        drop_cols = [c for c in ["meal_type", "tags", "goal_tags", "common_allergies"] if c in df.columns]
+        drop_cols = [c for c in ["meal_type", "tags", "goal_tags", "common_allergies", "_eff"]
+                     if c in df.columns]
         return {"count": len(df), "foods": df.drop(columns=drop_cols).to_dict("records")}
     except HTTPException:
         raise
