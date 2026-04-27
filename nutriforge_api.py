@@ -19,6 +19,8 @@ logger = logging.getLogger("nutriforge")
 
 # ── Load CSV ──────────────────────────────────────────────────────────────────
 CSV_PATH = Path(__file__).parent / "indian_diet_data.csv"
+if not CSV_PATH.exists():
+    CSV_PATH = Path("indian_diet_data.csv")
 
 df = None
 CSV_LOAD_ERROR = None
