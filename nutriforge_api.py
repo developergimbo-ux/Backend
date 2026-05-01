@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -589,6 +589,11 @@ app = FastAPI(
     version="3.0.0",
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+@app.get("/ping", tags=["health"])
+def ping():
+    return PlainTextResponse("OK")
 
 
 @app.get("/health", tags=["health"])
